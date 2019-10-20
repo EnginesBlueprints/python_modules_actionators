@@ -15,12 +15,95 @@
         "level": "alpha",
         "patch": 0
       }
-    }
+    },
+    "software": {
+      "display": {
+        "title": "Python with support for adding modules post build",
+        "label": "python_devel"
+      }
+    },
+    "timestamp": "2019-10-20T14:50:53+11:00"
   },
   "software": {
     "base": {
+      "name": "python",
+      "framework": "python3.7",
       "deployment_type": "web",
       "http_protocol": "https_and_http"
-    }
+    },
+    "service_configurations": [
+      {
+        "publisher_namespace": "EnginesSystem",
+        "type_path": "filesystem/local/filesystem",
+        "variables": {
+          "service_name": "pyconfig",
+          "volume_src": "",
+          "engine_path": "/home/fs/_pyconfig",
+          "permissions": "rw",
+          "user": "_Engines_Builder(cont_user_id)",
+          "group": "_Engines_Builder(data_gid)",
+          "fw_user": "_Engines_Builder(cont_user_id)",
+          "exclude_from_backup": "false"
+        }
+      }
+    ],
+    "actionators": [
+      {
+        "name": "install_module",
+        "label": "Install module",
+        "return_type": "plain_text",
+        "variables": [
+          {
+            "name": "module",
+            "mandatory": true,
+            "input": {
+              "type": "string",
+              "label": "Module"
+            }
+          }
+        ],
+        "script": {
+          "language": "sh",
+          "content": "#!/bin/sh\r\n. /home/app/venv/bin/activate\r\npython${python_version} -m pip install --upgrade  $module \r\n if test $? -eq 0\r\n then\r\n    echo  $module > /home/fs/_pyconfig/user_modules\r\n else\r\n  echo \"Failed to install $module \"\r\n fi"
+        }
+      },
+      {
+        "name": "update_user_modules",
+        "label": "Update user modules",
+        "return_type": "plain_text",
+        "script": {
+          "language": "sh",
+          "content": "#!/bin/sh\r\n\r\n. /home/app/venv/bin/activate\r\n \r\npython${python_version} -m pip install --upgrade pip \r\n\r\nif test -f /home/fs/_pyconfig/user_modules\r\n then\r\n   for module in `cat /home/fs/_pyconfig/user_modules`\r\n    do\r\n     echo Updating $module \r\n      python${python_version} -m pip  install --upgrade  $module\r\n    done\r\nfi"
+        }
+      },
+      {
+        "name": "rm_module",
+        "label": "Remote module",
+        "return_type": "plain_text",
+        "variables": [
+          {
+            "name": "module",
+            "mandatory": true,
+            "input": {
+              "type": "string",
+              "label": "Module name"
+            }
+          }
+        ],
+        "script": {
+          "language": "sh",
+          "content": "#!/bin/sh \r\n \r\n. /home/app/venv/bin/activate\r\n if test -f /home/app/user_modules\r\n      then\r\n      cat  /home/fs/_pyconfig/user_modules | grep -v \"$module\" >  /home/fs/_pyconfig/user_modules.new\r\n      python${python_version} -m pip  uninstall   $module \r\n       if test $? -eq 0\r\n       then\r\n        mv /home/fs/_pyconfig/user_modules.new /home/fs/_pyconfig/user_modules \r\n      else\r\n       echo failed to remove $module\r\n      fi\r\n    else\r\n     echo no User Modules\r\n fi"
+        }
+      },
+      {
+        "name": "list_user_modules",
+        "label": "List user modules",
+        "return_type": "plain_text",
+        "script": {
+          "language": "sh",
+          "content": "#!/bin/sh\r\n\r\nPATH=$PATH:/home/app/.local/bin/\r\nexport PATH\r\n\r\n\r\n  \r\n     if test -f /home/fs/_pyconfig/user_modules\r\n      then\r\n       cat /home/fs/_pyconfig/user_modules\r\n     else\r\n      echo 'No modules'\r\n     fi"
+        }
+      }
+    ]
   }
 }
